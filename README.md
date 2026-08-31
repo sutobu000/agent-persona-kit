@@ -97,6 +97,8 @@ node build/generate.mjs my.config.json ./dist  # 設定と出力先を指定
 | `agents/explorer.md` | 読み取り専用の探索。全文でなく結論を返す | `MODEL_WORK` |
 | `agents/docs.md` | ドキュメント作成。実装は変更しない | `MODEL_WORK` |
 
+プロファイルの`自己拡張`セクションにより、**エージェント自身が新しいskill/サブエージェントを作って追加する**。自作したものは各ツールの置き場所ではなく、この`agents/`(skillは`skills/`)へ足して再生成する。事実源を1か所に保ち、git履歴から「何のために作られたか」を辿れるようにするため。
+
 ## データ分離の原則
 
 **この3つは例外なし。**
@@ -136,6 +138,8 @@ node build/generate.mjs my.config.json ./dist  # 設定と出力先を指定
 | サブエージェント定義 | `.claude/agents/*.md`(Markdown+YAML) | `.codex/agents/*.toml`(TOML) | `.github/agents/*.agent.md`(Markdown+YAML) |
 | 真の委譲(親が子を起動して結果を回収) | **あり**(入れ子は既定で深さ3まで) | **あり**(spawn/wait/collectを公式に明記) | **CLIはあり**(`agent`/`Task` ツール)。**cloud agentは1タスク1エージェントのみ** |
 | モデル/思考量の指定 | `model`(`opus`/`sonnet`/`haiku`/`fable`/`inherit`)・`effort` | `model` / `model_reasoning_effort`(未指定なら親を継承) | `model` |
+| skill(手順書)対応 | **あり** `.claude/skills/<name>/SKILL.md` | **あり** `.agents/skills/`(`.claude/skills/`は**読まない**) | **あり(GA)** `.github/skills/` / `.claude/skills/` / `.agents/skills/` |
+| skillの必須frontmatter | 必須なし(`description`推奨) | `name` / `description` | `name` / `description` |
 
 ### Copilot の MCP 対応(重要)
 
@@ -151,6 +155,22 @@ node build/generate.mjs my.config.json ./dist  # 設定と出力先を指定
 - **Codex**: `.codex/agents/*.toml`。必須は `name` / `description` / `developer_instructions`。`config.toml` の `[agents]` で `enabled` / `max_concurrent_threads_per_session` / `default_subagent_model` 等を設定する。公式に「orchestration across agents(spawn・routing・waiting・closing)」と明記されており、**ペルソナ切替ではなく本物の委譲**。同時実行数や深さの既定値は**未確認**。
 - **Copilot**: `.github/agents/*.agent.md`(組織/Enterprise は `.github` / `.github-private` リポの `agents/`)。`description` が必須、`name` は省略時ファイル名。他に `target` `tools` `model` `disable-model-invocation` `user-invocable` `mcp-servers` `metadata`。**CLIでは真の委譲**(`agent` = `custom-agent` = `Task` ツールで子プロセスを起動し結果を回収)。**cloud agent(Issue割り当て)は1タスクにつき1エージェントだけで、エージェント間の委譲も並列セッションも公式ドキュメントに記載がない**(=未対応とみなす)。
 - したがって `orchestration` セクションは**3ツールすべてに出力する**。ただしCopilotのcloud agentで使う場合、委譲の記述は効かず「Leadが分解して検証する」という考え方だけが効く。
+
+### skill(手順書)の差(2026-08-31確認)
+
+**3ツールとも `SKILL.md`(YAML frontmatter + Markdown本文)という同じ形**を採用しているが、**探すディレクトリが違う**。ここが移植時の実務上の落とし穴。
+
+| ディレクトリ | Claude Code | Codex | Copilot |
+| --- | --- | --- | --- |
+| `.claude/skills/` | 読む | **読まない**(公式に明記) | 読む |
+| `.agents/skills/` | 読まない | 読む | 読む |
+| `.github/skills/` | 読まない | 読まない | 読む |
+
+- 3ツール共通で使える単一のディレクトリは**無い**。Codexも使うなら `.agents/skills/` に置き、Claude Code用に `.claude/skills/` へシンボリックリンクかコピーを用意する。
+- 個人用: Claude Code `~/.claude/skills/`、Codex `~/.agents/skills/`、Copilot `~/.copilot/skills/` または `~/.agents/skills/`。
+- Claude Code の frontmatter は必須項目なし(`description`推奨)だが他ツールは `name`/`description` が必須なので、**移植を考えるなら常に両方書く**。
+- Claude Code は `/skill-name` で明示呼び出しもできる(Codexは `$skill-name` / ChatGPTでは `@skill-name`)。Copilotは`description`による自動選択のみで、明示呼び出しの記載は見つからなかった。
+- Claude Code の公式ガイダンス: **SKILL.md は500行以内**にし、長い参考資料は別ファイルへ分ける。「同じ手順を貼り直している」「指示ファイルの一節が手順に育った」がskill化のサイン。
 
 ### 出典(2026-08-31取得)
 
@@ -171,6 +191,10 @@ node build/generate.mjs my.config.json ./dist  # 設定と出力先を指定
 | Copilot カスタムエージェントの設定リファレンス | https://docs.github.com/en/copilot/reference/custom-agents-configuration |
 | Copilot CLI からのカスタムエージェント委譲 | https://docs.github.com/en/copilot/how-tos/copilot-cli/use-copilot-cli/invoke-custom-agents |
 | Copilot cloud agent のカスタムエージェント | https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/create-custom-agents |
+| Claude Code skills(配置・frontmatter・500行の目安) | https://code.claude.com/docs/en/skills |
+| Codex skills(`.agents/skills/`・`[[skills.config]]`) | https://learn.chatgpt.com/docs/build-skills |
+| Copilot Agent Skills の概要 | https://docs.github.com/en/copilot/concepts/agents/about-agent-skills |
+| Copilot cloud agent へのskill追加(配置・必須項目) | https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/add-skills |
 
 ### 確認できなかったこと
 
@@ -181,5 +205,7 @@ node build/generate.mjs my.config.json ./dist  # 設定と出力先を指定
 - Copilot MCP のGA日とプラン範囲(changelogページ未取得)。
 - Codex のサブエージェントの同時実行数・入れ子の深さの既定値(公式ページに数値の記載なし)。
 - Codex に組織レベルでサブエージェントを配布する仕組みがあるか。
+- Copilot で skill を明示呼び出しする方法(公式ドキュメントには`description`による自動選択しか記載がない)。
+- Copilot で複数の skill ディレクトリが競合したときの優先順位。
 
 **注**: Claude Code の `CLAUDE.local.md` は廃止されていない。現行ドキュメントに個人用の仕組みとして記載がある。
