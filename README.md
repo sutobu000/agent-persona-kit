@@ -12,30 +12,40 @@
 persona-kit/
 ├─ kit.config.json          名前・呼び方・言語などの設定(これを編集する)
 ├─ core/
-│  ├─ persona-core.md       人格の共通ソース(文体・事実性・自走の境界)
+│  ├─ persona-core.md       人格の共通ソース(文体・事実性・自走・委譲・自己拡張)
+│  ├─ work-style.md         作業作法の共通ソース(言語・図・境界・モデル方針)
 │  └─ memory-rules.md       記憶運用の共通ソース(器の使い分け・週次点検)
 ├─ agents/                  サブエージェント定義のサンプル(reviewer/explorer/docs)
+├─ skills/                  手順書テンプレート(session-start/weekly-review/tech-watch)
 ├─ build/generate.mjs       生成スクリプト(Node 18+・依存ゼロ)
+├─ COVERAGE.md              移植元の全ルールと収録先の対応表(未収録ゼロが完了条件)
+├─ docs/CROSS-TOOL.md       Claude↔Codex連携レシピと社用PC初日チェックリスト
 ├─ out/                     生成物(git管理外)
-│  ├─ CLAUDE.md
-│  ├─ AGENTS.md
-│  ├─ copilot-instructions.md
-│  └─ agents/*.md
+│  ├─ CLAUDE.md             ルートプロファイル(@importで下2つを読む)
+│  ├─ claude/*.md           CLAUDE.mdから読み込まれる分冊
+│  ├─ AGENTS.md             全部入り(1ファイル)
+│  ├─ copilot-instructions.md  要約版
+│  ├─ agents/*.md
+│  └─ skills/<name>/SKILL.md
 └─ memory-server/PORTING.md 記憶MCPサーバーを別環境へ建てるときの変更点一覧
 ```
 
 ```mermaid
 flowchart LR
-  CFG[kit.config.json<br/>名前・呼び方・言語] --> GEN
-  P[core/persona-core.md<br/>人格] --> GEN[build/generate.mjs]
+  CFG[kit.config.json] --> GEN[build/generate.mjs]
+  P[core/persona-core.md<br/>人格] --> GEN
+  W[core/work-style.md<br/>作業作法] --> GEN
   M[core/memory-rules.md<br/>記憶運用] --> GEN
-  GEN --> C[out/CLAUDE.md<br/>Claude Code]
-  GEN --> A[out/AGENTS.md<br/>Codex]
-  GEN --> G[out/copilot-instructions.md<br/>Copilot]
-  C -.同じ人格.-> MEM[(記憶MCPサーバー<br/>環境ごとに1台)]
+  AG[agents/ + skills/<br/>雛形] --> GEN
+  GEN --> C["out/CLAUDE.md + claude/*.md<br/>Claude Code(完全)"]
+  GEN --> A["out/AGENTS.md<br/>Codex(完全)"]
+  GEN --> G["out/copilot-instructions.md<br/>Copilot(要約)"]
+  C -.同じ人格.-> MEM[(記憶MCPサーバー<br/>スコープごとに1台)]
   A -.-> MEM
-  G -.MCP対応は要確認.-> MEM
+  G -.OAuthリモートMCPは非対応.-> MEM
 ```
+
+**網羅度は出力ごとに違う。** Claude Code と Codex には全30セクションを出す。Copilot は「2ページ以内」という公式ガイダンスがあるため**要約版**になり、12セクションと全 `[detail]` 行が落ちる。落ちる内訳は [COVERAGE.md](COVERAGE.md) の「出力ごとの網羅度」にある。Copilot で完全な振る舞いが要るなら、リポジトリルートに `AGENTS.md` を置く(Copilot は `AGENTS.md` も読む)。
 
 ## 使い方
 
@@ -47,10 +57,20 @@ node build/generate.mjs my.config.json ./dist  # 設定と出力先を指定
 生成結果には各ツールの推奨サイズに対する残量が出る。超えると `WARN` が出るが生成は止まらない。
 
 ```
-  wrote CLAUDE.md                  150 lines / 200 (ok)
-  wrote AGENTS.md                  9861 bytes / 32768 (ok)
-  wrote copilot-instructions.md    74 lines / 120 (ok)
+  wrote CLAUDE.md                    146 lines / 200 (ok)
+  wrote claude/work-style.md         69 lines / 200 (ok)
+  wrote claude/memory-rules.md       72 lines / 200 (ok)
+  wrote AGENTS.md                    21661 bytes / 32768 (ok)
+  wrote copilot-instructions.md      112 lines / 120 (ok)
+  wrote agents/ (3): docs.md, explorer.md, reviewer.md
+  wrote skills/ (3): session-start, tech-watch, weekly-review
 ```
+
+### Claude Code の分冊について
+
+`core/` を複数ファイルに分けると、Claude Code 向け出力は **`CLAUDE.md` + `claude/*.md` の分冊**になり、`CLAUDE.md` の末尾から `@claude/work-style.md` のように import する。**1ファイル200行未満**という公式ガイダンスを各ファイルが満たすため。
+
+**正直に言うと、import は起動時に全部読み込まれるので文脈の節約にはならない。**効くのは「1ファイルが長すぎると指示の遵守率が下がる」という点だけ。本当に文脈を節約したいなら、手順を `skills/` へ移す(skillは使うときだけ読み込まれる)。このキットが `session-start` / `weekly-review` / `tech-watch` を skill にしているのはそのため。
 
 ## テンプレートの書き方
 
@@ -76,8 +96,18 @@ node build/generate.mjs my.config.json ./dist  # 設定と出力先を指定
 | `REVIEW_DAY` | `毎週金曜` | 記録の点検日 |
 | `MEMORY_TOOL` | `memory MCP` | 記憶サーバーの呼び名 |
 | `MODEL_JUDGE` / `MODEL_WORK` | 上位判断/実作業モデル | 2層委譲の担当分け |
+| `MODEL_DEFAULT` | 組織指定の既定モデル | 既定モデルと追従ポリシー |
 | `SCOPE_LABEL` | `社用` | このプロファイルの適用範囲 |
 | `DATE_EXAMPLE` | `2026-08-31` | 絶対日付の書式例 |
+| `BUSY_WINDOW` | 平日9-18時のCI稼働 | 自走時に避ける混雑時間帯 |
+| `TASK_TOOL` / `SCRATCH_DIR` | タスクリスト / 一時領域 | 作業の進め方 |
+| `DIAGRAM_TOOL` / `TYPOGRAPHY_RULE` | 図示ツール / 組版規則 | ドキュメント作法 |
+| `PRIMARY_SOURCES` | 公式ドキュメント | 事実確認の起点 |
+| `RESOURCE_RULES` | 読み書き可否の一覧 | **アクセス境界。社用では必ず埋める** |
+| `STANDING_NOTES` / `USER_INTERESTS` / `USER_WRITING_STYLE` | 恒久注意事項 / 関心 / 文体 | 個人に紐づくもの。**空のままでもよい**(記憶側のプロフィールへ逃がす前提) |
+| `ENV_ALIASES` | マシンの別名 | 会話での呼び名 |
+
+**個人情報を書く場所ではない。** `STANDING_NOTES` などは「参照せよ」という指示だけを入れ、中身は記憶サーバーのプロフィールに置く運用を想定している(`profile-vessel` セクション)。
 
 ## サブエージェント(オーケストレーション)
 
@@ -97,6 +127,18 @@ node build/generate.mjs my.config.json ./dist  # 設定と出力先を指定
 | `agents/explorer.md` | 読み取り専用の探索。全文でなく結論を返す | `MODEL_WORK` |
 | `agents/docs.md` | ドキュメント作成。実装は変更しない | `MODEL_WORK` |
 
+## skill(手順書)
+
+`skills/<name>/SKILL.md` も同じく置換済みで `out/skills/` へコピーされる。**運用の型のうち「毎回同じ順序で辿るもの」は、常時ロードではなくここに置く。**skillは使うときだけ読み込まれるので、文脈を食わない。
+
+| ファイル | 役割 |
+| --- | --- |
+| `skills/session-start/` | セッション冒頭の状況確認。相手に説明させる前に自分で把握する |
+| `skills/weekly-review/` | 週次点検。記録の整理と、未使用skill/エージェントの棚卸し |
+| `skills/tech-watch/` | 定期的な最新情報の収集。定期実行の仕組みが無い環境では手順書として使う |
+
+置き場所は3ツールで違う(下の「skillの差」を参照)。**3ツール共通で使える単一ディレクトリは無い。**
+
 プロファイルの`自己拡張`セクションにより、**エージェント自身が新しいskill/サブエージェントを作って追加する**。自作したものは各ツールの置き場所ではなく、この`agents/`(skillは`skills/`)へ足して再生成する。事実源を1か所に保ち、git履歴から「何のために作られたか」を辿れるようにするため。
 
 ## データ分離の原則
@@ -107,6 +149,8 @@ node build/generate.mjs my.config.json ./dist  # 設定と出力先を指定
 2. **記憶データのリポジトリ/ストレージは非公開に保つ。** 生成した指示ファイルには個人情報を入れない(このキットのテンプレートは一般化済み)。
 3. **MCPサーバーや外部AIツールを社用環境へ入れる前に、会社のポリシーを確認する。** 外部サービス利用・データ持ち出し・ソースコードの送信可否は組織ごとに違う。ポリシーがキットの指示と矛盾したら、ポリシーが常に優先する。
 
+**禁じているのはスコープをまたぐ接続であって、同一スコープ内の共有ではない。** 社用のClaude Codeと社用のCodexが社用の記憶サーバーを共有するのは問題ないどころか推奨される(それが「面をまたいで同一人格」の本来の使い方)。判断基準は「そのデータが漏れて困る相手が向こう側にいるか」。詳細は [docs/CROSS-TOOL.md](docs/CROSS-TOOL.md)。
+
 ## 社用に建てる手順(5歩)
 
 1. `kit.config.json` をコピーして名前・呼び方・`SCOPE_LABEL` を社用の値に書き換える。
@@ -115,9 +159,21 @@ node build/generate.mjs my.config.json ./dist  # 設定と出力先を指定
    - Claude Code: `~/.claude/CLAUDE.md`(個人) または リポジトリの `./CLAUDE.md`(共有)
    - Codex: `~/.codex/AGENTS.md`(個人) または リポジトリルートの `AGENTS.md`
    - Copilot: `.github/copilot-instructions.md`
-   - サブエージェントを使うなら `out/agents/*.md` を上の「サブエージェント」表の置き場所へ(Claude Codeはそのまま、Codex/Copilotは形式変換)
+   - Claude Code は `out/claude/` も同じ階層へ置く(`CLAUDE.md` が `@claude/...` で読む)
+   - サブエージェントとskillを使うなら `out/agents/` `out/skills/` を各表の置き場所へ(Claude Codeはそのまま、Codex/Copilotは形式変換や配置替え)
 4. 記憶サーバーが要るなら `memory-server/PORTING.md` に沿って社用インスタンスを1台建てる(会社ポリシーの確認が先)。
 5. 1週間使い、効かなかったルールを `core/*.md` へ反映して再生成する。**out/ を直接編集しない。**
+
+**初日に確認することは [docs/CROSS-TOOL.md](docs/CROSS-TOOL.md) のチェックリストにまとめてある**(会社ポリシー → Codexの実仕様 → MCP対応 → キット配置の順)。ポリシーが通らなければ以降は不要なので、そこから始める。
+
+## Claude ↔ Codex の連携
+
+Claude Code を Lead、Codex を作業員として使うレシピは [docs/CROSS-TOOL.md](docs/CROSS-TOOL.md) にある。要点だけ:
+
+- **既定は `codex exec`**(非対話モード)。`--sandbox` と `--cd` で触ってよい範囲を機構的に縛り、`--json` + `--output-last-message` で結果を回収する。
+- **`codex exec` の終了コードは公式に規約が無い**(未確認)。成否は Lead 自身が完了条件を実行して判定する。
+- **`codex mcp-server` は公式に非推奨**。公式は「Codex app server」または「Codexプラグイン for Claude Code」を案内している。MCPで繋ぐ前にそちらを調べる。
+- Codex を MCP **クライアント**として使う側(`[mcp_servers]`)は現役で、リモートHTTPにも対応する。記憶サーバーを Claude Code と Codex で共有する構成は成立する。
 
 ---
 
@@ -195,6 +251,12 @@ node build/generate.mjs my.config.json ./dist  # 設定と出力先を指定
 | Codex skills(`.agents/skills/`・`[[skills.config]]`) | https://learn.chatgpt.com/docs/build-skills |
 | Copilot Agent Skills の概要 | https://docs.github.com/en/copilot/concepts/agents/about-agent-skills |
 | Copilot cloud agent へのskill追加(配置・必須項目) | https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/add-skills |
+| `codex exec` 非対話モードのフラグ | https://learn.chatgpt.com/docs/non-interactive-mode |
+| Codex のコマンド一覧 | https://learn.chatgpt.com/docs/developer-commands |
+| `codex mcp-server`(**非推奨**) | https://learn.chatgpt.com/docs/mcp-server |
+| `codex app-server`(MCPの代替ではない) | https://learn.chatgpt.com/docs/app-server |
+| Codex を MCP クライアントとして使う設定 | https://learn.chatgpt.com/docs/extend/mcp |
+| Codex `config.toml` リファレンス | https://learn.chatgpt.com/docs/config-file/config-reference |
 
 ### 確認できなかったこと
 
@@ -207,5 +269,8 @@ node build/generate.mjs my.config.json ./dist  # 設定と出力先を指定
 - Codex に組織レベルでサブエージェントを配布する仕組みがあるか。
 - Copilot で skill を明示呼び出しする方法(公式ドキュメントには`description`による自動選択しか記載がない)。
 - Copilot で複数の skill ディレクトリが競合したときの優先順位。
+- `codex exec` の終了コードの規約(公式ドキュメントに記載なし。**実機で測ること**)。
+- `codex mcp-server` を Claude Code へ登録するときの正確なJSON書式。
+- 「Codexプラグイン for Claude Code」の詳細仕様(非推奨案内の中で言及されているのみ・未調査)。
 
 **注**: Claude Code の `CLAUDE.local.md` は廃止されていない。現行ドキュメントに個人用の仕組みとして記載がある。
