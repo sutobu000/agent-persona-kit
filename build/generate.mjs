@@ -30,6 +30,7 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const CORE_DIR = join(ROOT, "core");
+const AGENTS_DIR = join(ROOT, "agents");
 
 /** Order matters: persona first, then memory operations. */
 const CORE_FILES = ["persona-core.md", "memory-rules.md"];
@@ -249,6 +250,32 @@ function main() {
     writeFileSync(join(outDir, fileName), text, "utf8");
     console.log(`  wrote ${fileName.padEnd(26)} ${checkBudget(key, text)}`);
   }
+
+  buildAgents(config, outDir);
+}
+
+/**
+ * Subagent definitions are copied through with placeholder substitution only —
+ * no section filtering. They are emitted in Claude Code's `.claude/agents/*.md`
+ * format (YAML frontmatter + Markdown body); see README.md for the field mapping
+ * to Codex's `.codex/agents/*.toml` and Copilot's `.github/agents/*.agent.md`.
+ */
+function buildAgents(config, outDir) {
+  let names;
+  try {
+    names = readdirSync(AGENTS_DIR).filter((n) => n.endsWith(".md")).sort();
+  } catch {
+    return; // agents/ is optional
+  }
+  if (names.length === 0) return;
+
+  const agentsOut = join(outDir, "agents");
+  mkdirSync(agentsOut, { recursive: true });
+  for (const name of names) {
+    const text = substitute(readFileSync(join(AGENTS_DIR, name), "utf8"), config, `agents/${name}`);
+    writeFileSync(join(agentsOut, name), text, "utf8");
+  }
+  console.log(`  wrote agents/ (${names.length}): ${names.join(", ")}`);
 }
 
 main();

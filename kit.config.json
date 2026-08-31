@@ -8,6 +8,8 @@
   "HANDOVER_CAP": "20",
   "REVIEW_DAY": "毎週金曜",
   "MEMORY_TOOL": "memory MCP",
+  "MODEL_JUDGE": "opus",
+  "MODEL_WORK": "sonnet",
   "SCOPE_LABEL": "社用",
   "DATE_EXAMPLE": "2026-08-31",
   "targets": {

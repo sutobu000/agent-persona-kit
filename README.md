@@ -14,11 +14,13 @@ persona-kit/
 ├─ core/
 │  ├─ persona-core.md       人格の共通ソース(文体・事実性・自走の境界)
 │  └─ memory-rules.md       記憶運用の共通ソース(器の使い分け・週次点検)
+├─ agents/                  サブエージェント定義のサンプル(reviewer/explorer/docs)
 ├─ build/generate.mjs       生成スクリプト(Node 18+・依存ゼロ)
 ├─ out/                     生成物(git管理外)
 │  ├─ CLAUDE.md
 │  ├─ AGENTS.md
-│  └─ copilot-instructions.md
+│  ├─ copilot-instructions.md
+│  └─ agents/*.md
 └─ memory-server/PORTING.md 記憶MCPサーバーを別環境へ建てるときの変更点一覧
 ```
 
@@ -73,8 +75,27 @@ node build/generate.mjs my.config.json ./dist  # 設定と出力先を指定
 | `HANDOVER_CAP` | `20` | 申し送りの保持件数 |
 | `REVIEW_DAY` | `毎週金曜` | 記録の点検日 |
 | `MEMORY_TOOL` | `memory MCP` | 記憶サーバーの呼び名 |
+| `MODEL_JUDGE` / `MODEL_WORK` | 上位判断/実作業モデル | 2層委譲の担当分け |
 | `SCOPE_LABEL` | `社用` | このプロファイルの適用範囲 |
 | `DATE_EXAMPLE` | `2026-08-31` | 絶対日付の書式例 |
+
+## サブエージェント(オーケストレーション)
+
+`agents/` の定義は生成時に `out/agents/` へ置換済みでコピーされる。**3ツールとも「Leadが子エージェントを起動して結果を受け取る」本物の委譲を持つ**(下の対応状況表を参照)。ただし形式が違うので、置き場所と変換が要る。
+
+| ツール | 置き場所 | 形式 | 変換の要点 |
+| --- | --- | --- | --- |
+| Claude Code | `.claude/agents/*.md`(プロジェクト)/ `~/.claude/agents/*.md`(個人) | Markdown + YAML frontmatter | **そのままコピーできる。** |
+| Codex | `.codex/agents/*.toml`(プロジェクト)/ `~/.codex/agents/*.toml`(個人) | TOML | 本文を `developer_instructions` へ。`model` はそのまま、`tools` に相当する項目はなく `sandbox_mode` / `mcp_servers` で絞る |
+| Copilot | `.github/agents/*.agent.md`(リポ)/ `~/.copilot/agents/`(個人) | Markdown + YAML frontmatter | `name` / `description` / `tools` / `model` は同名。`target`(`vscode` \| `github-copilot`)を足す |
+
+サンプルは3つ。役割を「レビュー(判断)」「探索(実作業)」「文書(実作業)」に分けてあり、2層委譲の最小構成になっている。
+
+| ファイル | 役割 | モデル層 |
+| --- | --- | --- |
+| `agents/reviewer.md` | 敵対的レビュー。成立する失敗だけを指摘し、コードは直さない | `MODEL_JUDGE` |
+| `agents/explorer.md` | 読み取り専用の探索。全文でなく結論を返す | `MODEL_WORK` |
+| `agents/docs.md` | ドキュメント作成。実装は変更しない | `MODEL_WORK` |
 
 ## データ分離の原則
 
@@ -92,6 +113,7 @@ node build/generate.mjs my.config.json ./dist  # 設定と出力先を指定
    - Claude Code: `~/.claude/CLAUDE.md`(個人) または リポジトリの `./CLAUDE.md`(共有)
    - Codex: `~/.codex/AGENTS.md`(個人) または リポジトリルートの `AGENTS.md`
    - Copilot: `.github/copilot-instructions.md`
+   - サブエージェントを使うなら `out/agents/*.md` を上の「サブエージェント」表の置き場所へ(Claude Codeはそのまま、Codex/Copilotは形式変換)
 4. 記憶サーバーが要るなら `memory-server/PORTING.md` に沿って社用インスタンスを1台建てる(会社ポリシーの確認が先)。
 5. 1週間使い、効かなかったルールを `core/*.md` へ反映して再生成する。**out/ を直接編集しない。**
 
@@ -111,6 +133,9 @@ node build/generate.mjs my.config.json ./dist  # 設定と出力先を指定
 | サイズの目安 | **1ファイル200行未満**(推奨)/ 4MiB超は読み飛ばし | **合計32KiB**(`project_doc_max_bytes` 既定) | **2ページ以内**・タスク固有にしない |
 | 他形式の読み込み | AGENTS.md は非対応。`@AGENTS.md` でimportする | — | `AGENTS.md` / `CLAUDE.md` / `GEMINI.md` を代替として読む |
 | MCP対応 | 対応 | 対応 | **下記参照(制約あり)** |
+| サブエージェント定義 | `.claude/agents/*.md`(Markdown+YAML) | `.codex/agents/*.toml`(TOML) | `.github/agents/*.agent.md`(Markdown+YAML) |
+| 真の委譲(親が子を起動して結果を回収) | **あり**(入れ子は既定で深さ3まで) | **あり**(spawn/wait/collectを公式に明記) | **CLIはあり**(`agent`/`Task` ツール)。**cloud agentは1タスク1エージェントのみ** |
+| モデル/思考量の指定 | `model`(`opus`/`sonnet`/`haiku`/`fable`/`inherit`)・`effort` | `model` / `model_reasoning_effort`(未指定なら親を継承) | `model` |
 
 ### Copilot の MCP 対応(重要)
 
@@ -119,6 +144,13 @@ node build/generate.mjs my.config.json ./dist  # 設定と出力先を指定
 - **制約(これが効く)**: MCPの **tools のみ**対応。resources と prompts は使えない。**OAuthを使うリモートMCPサーバーは非対応。** 既定では書き込み系ツールなし。
 - つまり、私用の記憶サーバー(GitHub OAuth方式)は**そのままではCopilotから使えない**。Copilotから使うなら、PATやAPIキーによるヘッダー認証の経路を用意する必要がある。
 - VS Code側(クライアント)の `mcp.json` の具体的なパスは**未確認**(検索要約のみで一次情報を取得できていない)。
+
+### サブエージェントの差(2026-08-31確認)
+
+- **Claude Code**: `.claude/agents/*.md`。必須は `name` / `description` のみ。任意で `tools` `disallowedTools` `model` `permissionMode` `maxTurns` `skills` `mcpServers` `hooks` `memory` `background` `effort` `isolation` `color` `initialPrompt`。優先順位は managed settings > `--agents` > プロジェクト > 個人 > プラグイン。**子がさらに子を起動できる**(既定の深さ3・同時20)。いつ呼ぶかは `description` の書き方で決まる(有効/無効のフラグではない)。
+- **Codex**: `.codex/agents/*.toml`。必須は `name` / `description` / `developer_instructions`。`config.toml` の `[agents]` で `enabled` / `max_concurrent_threads_per_session` / `default_subagent_model` 等を設定する。公式に「orchestration across agents(spawn・routing・waiting・closing)」と明記されており、**ペルソナ切替ではなく本物の委譲**。同時実行数や深さの既定値は**未確認**。
+- **Copilot**: `.github/agents/*.agent.md`(組織/Enterprise は `.github` / `.github-private` リポの `agents/`)。`description` が必須、`name` は省略時ファイル名。他に `target` `tools` `model` `disable-model-invocation` `user-invocable` `mcp-servers` `metadata`。**CLIでは真の委譲**(`agent` = `custom-agent` = `Task` ツールで子プロセスを起動し結果を回収)。**cloud agent(Issue割り当て)は1タスクにつき1エージェントだけで、エージェント間の委譲も並列セッションも公式ドキュメントに記載がない**(=未対応とみなす)。
+- したがって `orchestration` セクションは**3ツールすべてに出力する**。ただしCopilotのcloud agentで使う場合、委譲の記述は効かず「Leadが分解して検証する」という考え方だけが効く。
 
 ### 出典(2026-08-31取得)
 
@@ -133,6 +165,12 @@ node build/generate.mjs my.config.json ./dist  # 設定と出力先を指定
 | Copilot カスタム指示・`applyTo`・2ページ目安・優先順位 | https://docs.github.com/en/copilot/customizing-copilot/adding-custom-instructions-for-github-copilot |
 | Copilot 組織レベル指示 | https://docs.github.com/en/copilot/how-tos/configure-custom-instructions/add-organization-instructions |
 | Copilot coding agent の MCP と制約 | https://docs.github.com/en/copilot/concepts/agents/coding-agent/mcp-and-coding-agent |
+| Claude Code サブエージェント(配置・frontmatter・入れ子) | https://code.claude.com/docs/en/sub-agents |
+| Claude Code Agent Teams(実験機能・入れ子不可) | https://code.claude.com/docs/en/agent-teams |
+| Codex サブエージェント(`.codex/agents/*.toml`・委譲) | https://learn.chatgpt.com/docs/agent-configuration/subagents |
+| Copilot カスタムエージェントの設定リファレンス | https://docs.github.com/en/copilot/reference/custom-agents-configuration |
+| Copilot CLI からのカスタムエージェント委譲 | https://docs.github.com/en/copilot/how-tos/copilot-cli/use-copilot-cli/invoke-custom-agents |
+| Copilot cloud agent のカスタムエージェント | https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/create-custom-agents |
 
 ### 確認できなかったこと
 
@@ -141,5 +179,7 @@ node build/generate.mjs my.config.json ./dist  # 設定と出力先を指定
 - `project_doc_max_bytes` の既定値を 64KiB とする二次情報があったが、公式ページは 32KiB と記載。**32KiB を採用**。
 - VS Code の MCP 設定ファイルの正確なパス。
 - Copilot MCP のGA日とプラン範囲(changelogページ未取得)。
+- Codex のサブエージェントの同時実行数・入れ子の深さの既定値(公式ページに数値の記載なし)。
+- Codex に組織レベルでサブエージェントを配布する仕組みがあるか。
 
 **注**: Claude Code の `CLAUDE.local.md` は廃止されていない。現行ドキュメントに個人用の仕組みとして記載がある。
