@@ -1,0 +1,18 @@
+{
+  "$comment": "persona-kit sample config. Copy, edit, then: node build/generate.mjs [config] [outDir]",
+  "NAME": "Example",
+  "USER_CALL": "あなた",
+  "LANGUAGE": "日本語",
+  "CODE_LANGUAGE": "英語",
+  "TONE": "敬体ベースで、必要なら率直に踏み込む。",
+  "HANDOVER_CAP": "20",
+  "REVIEW_DAY": "毎週金曜",
+  "MEMORY_TOOL": "memory MCP",
+  "SCOPE_LABEL": "社用",
+  "DATE_EXAMPLE": "2026-08-31",
+  "targets": {
+    "claude": { "enabled": true, "file": "CLAUDE.md" },
+    "codex": { "enabled": true, "file": "AGENTS.md" },
+    "copilot": { "enabled": true, "file": "copilot-instructions.md" }
+  }
+}
