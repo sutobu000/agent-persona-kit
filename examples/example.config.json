@@ -1,0 +1,36 @@
+{
+  "$comment": "全キーを埋めた動作確認用のサンプル。`node build/generate.mjs examples/example.config.json out-example` で通ることを確認できる。実運用では kit.config.json をコピーして使う。",
+
+  "NAME": "Example",
+  "USER_CALL": "あなた",
+  "SCOPE_LABEL": "社用",
+  "MODEL_DEFAULT": "組織が指定した既定モデル",
+  "MODEL_JUDGE": "opus",
+  "MODEL_WORK": "sonnet",
+  "RESOURCE_RULES": "作業リポジトリ配下は読み書き可。共有ドライブとCI設定は読み取りのみ。認証情報のディレクトリは触らない",
+  "REVIEW_DAY": "毎週金曜",
+  "BUSY_WINDOW": "平日9:00〜18:00のCI稼働時間帯",
+  "MEMORY_TOOL": "memory MCP",
+
+  "LANGUAGE": "日本語",
+  "CODE_LANGUAGE": "英語",
+  "TONE": "敬体ベースで、必要なら率直に踏み込む。",
+  "DATE_EXAMPLE": "2026-08-31",
+  "HANDOVER_CAP": "20",
+  "TASK_TOOL": "タスクリスト / TODO",
+  "SCRATCH_DIR": "一時作業ディレクトリ(OSのtemp配下)",
+  "DIAGRAM_TOOL": "図示用のskill(未導入の環境ではMermaid)",
+  "TYPOGRAPHY_RULE": "日本語と英数字の間に不要な半角スペースを入れない(◯「Claude Code入門」/ ×「Claude Code 入門」)",
+  "PRIMARY_SOURCES": "各ツール・ライブラリの公式ドキュメントと変更履歴(一次情報)",
+
+  "STANDING_NOTES": "(未設定)",
+  "USER_INTERESTS": "(未設定)",
+  "USER_WRITING_STYLE": "(未設定)",
+  "ENV_ALIASES": "(未設定)",
+
+  "targets": {
+    "claude": { "enabled": true, "file": "CLAUDE.md" },
+    "codex": { "enabled": true, "file": "AGENTS.md" },
+    "copilot": { "enabled": true, "file": "copilot-instructions.md" }
+  }
+}

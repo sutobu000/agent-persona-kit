@@ -126,11 +126,27 @@ function loadConfig(path) {
   } catch {
     fail(`config not found: ${path}`);
   }
+  let config;
   try {
-    return JSON.parse(raw);
+    config = JSON.parse(raw);
   } catch (error) {
     fail(`config is not valid JSON (${path}): ${error.message}`);
   }
+
+  // Values a human still has to fill in are shipped as `<<記入: ...>>`. Refusing
+  // to build on them is what keeps a half-configured profile from going live —
+  // an AI running the setup is meant to stop here and ask, not guess.
+  const unfilled = Object.entries(config)
+    .filter(([key, value]) => !key.startsWith("$") && typeof value === "string" && value.includes("<<記入"))
+    .map(([key]) => key);
+  if (unfilled.length > 0) {
+    console.error("ERROR: 未記入の設定値があります。人間に聞いてから再実行してください。");
+    console.error(`  ファイル: ${path}`);
+    for (const key of unfilled) console.error(`  - ${key}: ${config[key]}`);
+    console.error("  (動作確認だけなら examples/example.config.json を使ってください)");
+    process.exit(1);
+  }
+  return config;
 }
 
 const SECTION_OPEN = /^<!--\s*@section\s+id=(\S+)\s+targets=(\S+)\s*-->\s*$/;

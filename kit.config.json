@@ -1,35 +1,35 @@
 {
-  "$comment": "persona-kit sample config. Copy, edit, then: node build/generate.mjs [config] [outDir]",
+  "$comment": "人間が記入するテンプレート。`<<記入:` が残っている間は生成が失敗する。記入不要なキーは既定値が入っているので触らなくてよい。動作確認だけしたいなら examples/example.config.json を使う。",
 
-  "NAME": "Example",
-  "USER_CALL": "あなた",
+  "$記入が必要": "以下10キー。AIはこれだけを人間に聞き、それ以外は既定値のまま進めてよい。",
+  "NAME": "<<記入: アシスタントの名前。一人称にもなる(例: Stob)>>",
+  "USER_CALL": "<<記入: あなたの呼ばれ方(例: 名字+さん / あなた / ニックネーム)>>",
+  "SCOPE_LABEL": "<<記入: このプロファイルの適用範囲(例: 社用 / A社案件)>>",
+  "MODEL_DEFAULT": "<<記入: 既定で使うモデル。組織指定があればそれ>>",
+  "MODEL_JUDGE": "<<記入: 上位判断を任せるモデル(例: opus)>>",
+  "MODEL_WORK": "<<記入: 実作業を任せるモデル(例: sonnet)>>",
+  "RESOURCE_RULES": "<<記入: 読み書きしてよい場所と、してはいけない場所。社用では必ず埋める>>",
+  "REVIEW_DAY": "<<記入: 週次点検をする曜日(例: 毎週金曜)>>",
+  "BUSY_WINDOW": "<<記入: 自走を避ける混雑時間帯(例: 平日9:00〜18:00)。無ければ「特になし」>>",
+  "MEMORY_TOOL": "<<記入: 記憶サーバーの呼び名。用意しないなら「(なし)」>>",
+
+  "$既定値あり": "以下は触らなくてよい。環境に合わせたいときだけ書き換える。",
   "LANGUAGE": "日本語",
   "CODE_LANGUAGE": "英語",
   "TONE": "敬体ベースで、必要なら率直に踏み込む。",
-
-  "SCOPE_LABEL": "社用",
   "DATE_EXAMPLE": "2026-08-31",
-  "REVIEW_DAY": "毎週金曜",
-  "BUSY_WINDOW": "平日9:00〜18:00のCI稼働時間帯",
-
-  "MEMORY_TOOL": "memory MCP",
   "HANDOVER_CAP": "20",
-
-  "MODEL_JUDGE": "opus",
-  "MODEL_WORK": "sonnet",
-  "MODEL_DEFAULT": "組織が指定した既定モデル",
-
-  "TASK_TOOL": "TodoWrite / タスクリスト",
+  "TASK_TOOL": "タスクリスト / TODO",
   "SCRATCH_DIR": "一時作業ディレクトリ(OSのtemp配下)",
   "DIAGRAM_TOOL": "図示用のskill(未導入の環境ではMermaid)",
   "TYPOGRAPHY_RULE": "日本語と英数字の間に不要な半角スペースを入れない(◯「Claude Code入門」/ ×「Claude Code 入門」)",
-
   "PRIMARY_SOURCES": "各ツール・ライブラリの公式ドキュメントと変更履歴(一次情報)",
-  "STANDING_NOTES": "(この環境では未設定。特定の話題に必ず添える恒久事項があればここに列挙する)",
-  "USER_INTERESTS": "(この環境では未設定。相手の恒常的な関心をここに列挙する)",
-  "USER_WRITING_STYLE": "(この環境では未設定。代筆時に従う相手の文体をここに書くか、記憶側のプロフィールを参照する)",
-  "ENV_ALIASES": "(この環境では未設定。マシンや環境の呼び名があればここに列挙する)",
-  "RESOURCE_RULES": "(この環境では未設定。読み書きしてよい場所・してはいけない場所をここに列挙する)",
+
+  "$個人に紐づく項目": "空欄のままでよい。中身は記憶サーバーのプロフィールへ置く運用を想定している。",
+  "STANDING_NOTES": "(未設定。特定の話題に必ず添える恒久事項があれば記入する)",
+  "USER_INTERESTS": "(未設定。恒常的な関心があれば記入する)",
+  "USER_WRITING_STYLE": "(未設定。代筆時に従う文体があれば記入する)",
+  "ENV_ALIASES": "(未設定。マシンや環境の呼び名があれば記入する)",
 
   "targets": {
     "claude": { "enabled": true, "file": "CLAUDE.md" },

@@ -4,13 +4,27 @@
 
 私用でうまく回っている「同一人格 + 記憶サーバー」の仕組みを、別環境(社用など)へ持ち込むための雛形。人格の中身は穴埋めテンプレートに一般化してあり、個人情報は含まない。
 
+## AIに導入させる場合(いちばん速い)
+
+**このリポジトリ(zip)を渡して、こう言うだけです。**
+
+> SETUP-FOR-AI.md に従って導入して
+
+[SETUP-FOR-AI.md](SETUP-FOR-AI.md) はAIエージェント向けに書かれた導入手順書です。環境検出・生成・配置・自己検証・初週の運用まで、AIが自分で進めます。
+
+**人間がやることは1つだけ** — `kit.config.json` の `<<記入: ...>>` が付いた**10個の値を答えること**。それ以外は聞かれません。未記入のまま生成しようとすると、生成器がキーを列挙してエラーで止まります。
+
+Node が無い環境でも導入できます。手順書に変換仕様が書いてあるので、AIが手で同じ変換を行います。
+
 ---
 
 ## 構成
 
 ```
 persona-kit/
-├─ kit.config.json          名前・呼び方・言語などの設定(これを編集する)
+├─ SETUP-FOR-AI.md          AI向け導入手順書(「これに従って導入して」と渡す)
+├─ kit.config.json          設定テンプレ(`<<記入:` の10個を人間が埋める)
+├─ examples/example.config.json  全キーを埋めた動作確認用サンプル
 ├─ core/
 │  ├─ persona-core.md       人格の共通ソース(文体・事実性・自走・委譲・自己拡張)
 │  ├─ work-style.md         作業作法の共通ソース(言語・図・境界・モデル方針)
@@ -50,9 +64,12 @@ flowchart LR
 ## 使い方
 
 ```bash
-node build/generate.mjs                      # kit.config.json → out/
-node build/generate.mjs my.config.json ./dist  # 設定と出力先を指定
+node build/generate.mjs                                    # kit.config.json → out/
+node build/generate.mjs examples/example.config.json out   # サンプル値で動作確認
+node build/generate.mjs my.config.json ./dist              # 設定と出力先を指定
 ```
+
+`kit.config.json` に `<<記入:` が残っていると、**生成せずに未記入キーを列挙して終了します**(半端な設定のまま配布されるのを防ぐため)。
 
 生成結果には各ツールの推奨サイズに対する残量が出る。超えると `WARN` が出るが生成は止まらない。
 
@@ -153,7 +170,9 @@ node build/generate.mjs my.config.json ./dist  # 設定と出力先を指定
 
 ## 社用に建てる手順(5歩)
 
-1. `kit.config.json` をコピーして名前・呼び方・`SCOPE_LABEL` を社用の値に書き換える。
+**AIに任せるなら [SETUP-FOR-AI.md](SETUP-FOR-AI.md) を渡すだけで、以下は不要です。**手でやる場合:
+
+1. `kit.config.json` の `<<記入:` が付いた10個の値を埋める(名前・呼び方・`SCOPE_LABEL`・モデル3つ・`RESOURCE_RULES`・点検日・混雑時間帯・記憶サーバー名)。
 2. `node build/generate.mjs` で3形式を生成する。
 3. 各ツールの置き場所へ配る。
    - Claude Code: `~/.claude/CLAUDE.md`(個人) または リポジトリの `./CLAUDE.md`(共有)
