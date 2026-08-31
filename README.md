@@ -1,8 +1,23 @@
-# persona-kit
+# agent-persona-kit
 
-**人格と記憶運用のルールを1か所で書き、Claude Code / OpenAI Codex / GitHub Copilot の3ツール向けの指示ファイルへ書き出すキット。**
+> **Write your AI assistant's persona and memory rules once, generate instruction files for Claude Code, OpenAI Codex, and GitHub Copilot.**
+>
+> A zero-dependency Node script turns shared Markdown templates into `CLAUDE.md`, `AGENTS.md`, and `.github/copilot-instructions.md`, trimming each output to that tool's documented size guidance. Ships with subagent and skill templates, plus [`SETUP-FOR-AI.md`](SETUP-FOR-AI.md) — a setup guide written **for an AI agent to follow on its own**.
+>
+> Documentation below is in Japanese. Every vendor claim carries a source URL and the date it was checked (2026-08-31).
 
-私用でうまく回っている「同一人格 + 記憶サーバー」の仕組みを、別環境(社用など)へ持ち込むための雛形。人格の中身は穴埋めテンプレートに一般化してあり、個人情報は含まない。
+---
+
+> [!WARNING]
+> **v0.1 — 実戦検証前です。**
+>
+> このキットの「設計」は実運用している構成から起こしていますが、**キットとして別環境へ導入した実績はまだありません。**生成・サイズ検証・リーク検査は自動で通していますが、**「導入して1週間使った」という検証はこれからです。**
+>
+> 各ツールの仕様は2026-08-31に一次情報で確認していますが、この分野は動きが速いので、**使う前に出典リンクを開いて現行仕様を確かめてください。**確認できなかった項目は「未確認」と明記してあります。
+
+**人格と記憶運用のルールを1か所で書き、Claude Code / OpenAI Codex / GitHub Copilot の3ツール向けの指示ファイルへ書き出すキットです。**
+
+複数のツール・複数の面(CLI・IDE・チャット)を使っていると、同じアシスタントのはずなのに面ごとに別人になります。それを避けるため、**人格と作法を単一の事実源にまとめ、各ツールの制約に合わせて出し分ける**のがこのキットの役目です。テンプレートは穴埋め式で、個人情報は含みません。
 
 ## AIに導入させる場合(いちばん速い)
 
@@ -21,7 +36,8 @@ Node が無い環境でも導入できます。手順書に変換仕様が書い
 ## 構成
 
 ```
-persona-kit/
+agent-persona-kit/
+├─ LICENSE                  MIT
 ├─ SETUP-FOR-AI.md          AI向け導入手順書(「これに従って導入して」と渡す)
 ├─ kit.config.json          設定テンプレ(`<<記入:` の10個を人間が埋める)
 ├─ examples/example.config.json  全キーを埋めた動作確認用サンプル
@@ -221,7 +237,7 @@ Claude Code を Lead、Codex を作業員として使うレシピは [docs/CROSS
 - Copilot cloud agent と Copilot code review の MCP は **2026-07-29 にGA**(Pro/Pro+/Business/Enterprise)。ただしこのGA日とプラン一覧は検索結果由来で、changelogページ自体は未取得(**準確認**)。
 - 設定場所: リポジトリの **Settings → Copilot → MCP servers**(JSON)。認証トークンは **Settings → Secrets and variables → Agents**。
 - **制約(これが効く)**: MCPの **tools のみ**対応。resources と prompts は使えない。**OAuthを使うリモートMCPサーバーは非対応。** 既定では書き込み系ツールなし。
-- つまり、私用の記憶サーバー(GitHub OAuth方式)は**そのままではCopilotから使えない**。Copilotから使うなら、PATやAPIキーによるヘッダー認証の経路を用意する必要がある。
+- つまり、GitHub OAuth方式の記憶サーバーは**そのままではCopilotから使えない**。Copilotから使うなら、PATやAPIキーによるヘッダー認証の経路を用意する必要がある。
 - VS Code側(クライアント)の `mcp.json` の具体的なパスは**未確認**(検索要約のみで一次情報を取得できていない)。
 
 ### サブエージェントの差(2026-08-31確認)
@@ -293,3 +309,17 @@ Claude Code を Lead、Codex を作業員として使うレシピは [docs/CROSS
 - 「Codexプラグイン for Claude Code」の詳細仕様(非推奨案内の中で言及されているのみ・未調査)。
 
 **注**: Claude Code の `CLAUDE.local.md` は廃止されていない。現行ドキュメントに個人用の仕組みとして記載がある。
+
+---
+
+## ライセンス
+
+[MIT](LICENSE) — Copyright (c) 2026 sutobu000
+
+## 貢献・フィードバック
+
+Issue と Pull Request を歓迎します。とくに次の3種類が助かります。
+
+1. **各ツールの仕様が変わっていた**という指摘(出典URLを添えてもらえると確実です)。
+2. **実際に導入してみた結果**(効かなかったルール・環境ごとの詰まりどころ)。v0.1はまさにこの検証が足りていません。
+3. **一般化しきれていない箇所**の指摘。特定環境を前提にした記述が残っていたら教えてください。
